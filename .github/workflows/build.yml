@@ -1,0 +1,56 @@
+name: Build BT Dummy
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib
+    
+    - name: Clone pico-sdk
+      run: |
+        git clone --depth 1 --branch 2.1.1 https://github.com/raspberrypi/pico-sdk.git
+        cd pico-sdk
+        git submodule update --init --recursive --depth 1
+    
+    - name: Build project
+      run: |
+        export PICO_SDK_PATH=$(pwd)/pico-sdk
+        mkdir build
+        cd build
+        cmake ..
+        make -j$(nproc)
+    
+    - name: Upload firmware artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: bt_dummy_firmware
+        path: build/*.uf2
+        retention-days: 30
+    
+    - name: Upload all artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: bt_dummy_all
+        path: |
+          build/*.uf2
+          build/*.elf
+          build/*.bin
+          build/*.hex
+          build/*.map
+        retention-days: 30
